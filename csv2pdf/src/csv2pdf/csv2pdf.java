@@ -22,17 +22,24 @@ public class csv2pdf {
 		List<String[]> data = new ArrayList<String[]>();
 		List<String[]> finalData = new ArrayList<String[]>();
 		
+		// Find newest file
 		File file = getNewestFile(home);
 		
+		// Check to see if file has extension of CSV, otherwise do nothing
 		if (!filenameExtension(file).equals("csv")) {			
 			System.out.println("Not a csv file, download the excel file and try again.");
 		}
 		else {			
 			if (file != null) {
 				try {
+					// Reader parses csv file into an array of String[]
 					CSVReader reader = new CSVReader(new FileReader(file.getAbsolutePath()));
 					String[] nextLine;
+					
+					// Store headers
 					headers = reader.readNext();
+					
+					// Store the rest of the data 
 					while ((nextLine = reader.readNext()) != null) {
 						data.add(nextLine);
 					}
@@ -48,12 +55,22 @@ public class csv2pdf {
 			
 			for (int i = 0; i < headers.length; i++) {		
 				
-				if (headers[i].equals("Address") || headers[i].equals("CMHC Number")) {
+				// Checks for key header names
+				if (headers[i].equals("Region") || 
+					headers[i].equals("Address") || 
+					headers[i].equals("CMHC Number")) {
+					
 					String[] s = new String[MAXIMUM_NUMBER_PDFS];
+					
+					// Stores header
 					s[0] = headers[i];
+					
+					// Stores the column under the header
 					for (int j = 0; j < data.size(); j++) {
 						s[j + 1] = data.get(j)[i];
 					}
+					
+					// Stores the final column into a final data set
 					finalData.add(s);
 				}
 			}
