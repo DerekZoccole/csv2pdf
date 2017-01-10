@@ -3,6 +3,7 @@ package csv2pdf;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 // csv2pdf Application
@@ -13,11 +14,13 @@ import java.util.List;
 //
 // CSV files only
 
-public class csv2pdf {
+public class csv2pdf {	
+	final static int MAXIMUM_NUMBER_PDFS = 100;
 	public static void main(String[] args) {
 		String home = System.getProperty("user.home") + "/Downloads/";
-		String[] headers;
-		List<String[]> data;
+		String[] headers = new String[22];
+		List<String[]> data = new ArrayList<String[]>();
+		List<String[]> finalData = new ArrayList<String[]>();
 		
 		File file = getNewestFile(home);
 		
@@ -29,11 +32,9 @@ public class csv2pdf {
 				try {
 					CSVReader reader = new CSVReader(new FileReader(file.getAbsolutePath()));
 					String[] nextLine;
-					reader.readNext();
+					headers = reader.readNext();
 					while ((nextLine = reader.readNext()) != null) {
-						for (int i = 0; i < nextLine.length; i++) {
-							System.out.println(nextLine[i]);
-						}
+						data.add(nextLine);
 					}
 					reader.close();
 				}
@@ -42,6 +43,22 @@ public class csv2pdf {
 				}
 			}
 		}
+		
+		if (headers != null && data != null) {
+			
+			for (int i = 0; i < headers.length; i++) {		
+				
+				if (headers[i].equals("Address") || headers[i].equals("CMHC Number")) {
+					String[] s = new String[MAXIMUM_NUMBER_PDFS];
+					s[0] = headers[i];
+					for (int j = 0; j < data.size(); j++) {
+						s[j + 1] = data.get(j)[i];
+					}
+					finalData.add(s);
+				}
+			}
+		}
+			
 	}		
 	
 	private static File getNewestFile(String dirPath) {
