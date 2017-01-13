@@ -4,6 +4,7 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +46,7 @@ public class csv2pdf {
 		String[] headers = new String[22];
 		List<String[]> data = new ArrayList<String[]>();
 		List<String[]> finalData = new ArrayList<String[]>();
+		String filename = "temp";
 		
 		// Find newest file
 		File file = findDirectory();
@@ -104,18 +106,31 @@ public class csv2pdf {
 		try {
 			FDFDoc doc = null;
 			doc = new FDFDoc();
-//			for (int i = 0; i < finalData.get(0).length; i++) {
-//				for (int j = 1; j < finalData.size(); j++) {
-					doc.SetValue("Province", getProvince(finalData.get(0)[1]));
-					doc.SetValue("Address", checkForComma(finalData.get(2)[1]) ? parseAddress(finalData.get(2)[1]) : finalData.get(2)[1]);
-					doc.SetValue("City", checkForComma(finalData.get(2)[1]) ? finalCity : "");
-					doc.SetValue("Street No", streetNumber);
-					doc.SetFile(dirNames[1] + getService(finalData.get(1)[1]));
-					doc.Save("temp.fdf");
-					File f = new File("temp.fdf");
-					Desktop.getDesktop().open(f);
-//				}
-//			}
+			for (int i = 1; i < finalData.size(); i++) {
+				doc.SetValue("Province", getProvince(finalData.get(0)[i]));
+				doc.SetValue("Address", checkForComma(finalData.get(2)[i]) ? parseAddress(finalData.get(2)[i]) : finalData.get(2)[i]);
+				doc.SetValue("City", checkForComma(finalData.get(2)[i]) ? finalCity : "");
+				doc.SetValue("Street No", streetNumber);
+				doc.SetValue("CMHC Account No", parseCMHC(finalData.get(3)[i]));
+				doc.SetFile(dirNames[1] + getService(finalData.get(1)[i]));
+				
+				filename += Integer.toString(i);
+				filename += ".fdf";
+				
+				doc.Save(filename);
+				
+				String s = "acrobat /n " + System.getProperty("user.dir") + "/" + filename;
+				
+				Process pr = Runtime.getRuntime().exec(s);
+				int exitCode = pr.exitValue();
+				
+				System.out.println(exitCode);
+
+//				File f = new File(filename);
+//				Desktop.getDesktop().open(f);
+				
+				filename = "temp";
+			}
 		}
 		catch (FDFException e) {
 			
@@ -218,6 +233,8 @@ public class csv2pdf {
 	// Finds which service is being requested and returns the appropriate file
 	private static String getService(String service) {
 		switch (service) {
+			case "ERP Final":
+				return pdfNames[0];
 			case "Retrofit Final":
 				return pdfNames[1];
 			default:
@@ -253,7 +270,7 @@ public class csv2pdf {
 	private static String parseAddress(String address) {
 		final char comma = ',';
 		int count = 0;
-		String temp = address;
+		String temp;
 		
 		for (int i = 0; i < address.length(); i++) {
 			if (address.charAt(i) == comma) {
@@ -301,7 +318,8 @@ public class csv2pdf {
 		System.out.println(address.substring(0, address.indexOf(' ')));
 		if (address.substring(0, address.indexOf(' ')) == "House" ||
 		    address.substring(0, address.indexOf(' ')) == "Lot" ||
-		    address.substring(0, address.indexOf(' ')) == "Unit") {
+		    address.substring(0, address.indexOf(' ')) == "Unit" ||
+		    address.substring(0, address.indexOf(' ')) == "Mile") {
 			streetNumber = address.substring(0, ordinalIndexOf(address, " ", 2));
 			return address.substring(ordinalIndexOf(address, " ", 2) + 1);
 		}
@@ -325,5 +343,16 @@ public class csv2pdf {
 		while (--n > 0 && pos != -1) 
 			pos = str.indexOf(substr, pos + 1);
 		return pos;
+	}
+	
+	private static String parseCMHC(String number) {
+		if (number.contains("-")) {
+			number = number.replaceAll("-", "");
+		}
+		
+		if (number.contains(" ")) {
+			number = number.replaceAll(" ", "");
+		}
+		return number;
 	}
 }
