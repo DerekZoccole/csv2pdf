@@ -1,10 +1,8 @@
 package csv2pdf;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -121,22 +119,15 @@ public class csv2pdf {
 				
 				String s = "acrobat /n " + System.getProperty("user.dir") + "/" + filename;
 				
+				@SuppressWarnings("unused")
 				Process pr = Runtime.getRuntime().exec(s);
-				int exitCode = pr.exitValue();
-				
-				System.out.println(exitCode);
-
-//				File f = new File(filename);
-//				Desktop.getDesktop().open(f);
-				
-				filename = "temp";
 			}
 		}
 		catch (FDFException e) {
-			
+			System.out.println("FDF error");
 		}
 		catch (IOException e) {
-			
+			System.out.println("IO error");
 		}
 	}		
 	
@@ -270,6 +261,7 @@ public class csv2pdf {
 	private static String parseAddress(String address) {
 		final char comma = ',';
 		int count = 0;
+		@SuppressWarnings("unused")
 		String temp;
 		
 		for (int i = 0; i < address.length(); i++) {
@@ -321,10 +313,14 @@ public class csv2pdf {
 		    address.substring(0, address.indexOf(' ')) == "Unit" ||
 		    address.substring(0, address.indexOf(' ')) == "Mile") {
 			streetNumber = address.substring(0, ordinalIndexOf(address, " ", 2));
+			if (streetNumber == null)
+				streetNumber = "";
 			return address.substring(ordinalIndexOf(address, " ", 2) + 1);
 		}
 		else {
 			streetNumber = address.substring(0, address.indexOf(' '));
+			if (streetNumber == null)
+				streetNumber = "";
 			return address.substring(address.indexOf(' ') + 1);
 		}
 	}
