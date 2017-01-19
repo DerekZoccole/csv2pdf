@@ -6,6 +6,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+
 import com.adobe.fdf.FDFDoc;
 import com.adobe.fdf.exceptions.FDFException;
 
@@ -26,14 +30,14 @@ import com.adobe.fdf.exceptions.FDFException;
 // Takes a csv file from the OZHI web interface and converts it to fdf file format then auto fills a certain pdf form
 
 public class csv2pdf {	
-	// Maximum number of pdfs that can be populated
-	final static int MAXIMUM_NUMBER_PDFS = 100;
-	
 	// Names of pdf files
-	final static String[] pdfNames = {"ERP_progress_inspection_form_bilingual.pdf", "Retrofit_progress_inspection_form_bilingual.pdf"};
+	final static String[] pdfNames = {"ERP_progress_inspection_form_bilingual.pdf", "Retrofit_progress_inspection_form_bilingual.pdf", "rrap_progress_inspection_form_bilingual.pdf"};
 
 	// Names of directories most used for downloading
 	final static String[] dirNames = {System.getProperty("user.home") + "/Downloads/", System.getProperty("user.home") + "/Documents/", System.getProperty("user.home") + "/Desktop/"};
+	
+	// Name of directory the program is run in
+	final static String directory = "C://Program Files//OZHI-PDF-CREATOR//";
 
 	// Variable names for populating pdf forms
 	static String finalCity, streetNumber;
@@ -46,12 +50,26 @@ public class csv2pdf {
 		List<String[]> finalData = new ArrayList<String[]>();
 		String filename = "temp";
 		
+		String[] buttonText = {"OK"};
+		JPanel panel = new JPanel();
+		JLabel label = new JLabel("No error");
+		
+		if (!checkDirectoryLocation(directory)) {			
+			label.setText("C:/Program Files/OZHI-PDF-CREATOR/ directory does not exist.  Please rerun setup.");
+			panel.add(label);
+			JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+			return;
+		}
+		
 		// Find newest file
 		File file = findDirectory();
 		
 		// Check to see if file has extension of CSV, otherwise do nothing
 		if (!filenameExtension(file).equals("csv")) {			
-			System.out.println("Not a csv file, download the excel file and try again.");
+			label.setText("Not a csv file, download the excel file and rerun this program.");
+			panel.add(label);
+			JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+			return;
 		}
 		else {			
 			if (file != null) {
@@ -69,8 +87,12 @@ public class csv2pdf {
 					}
 					reader.close();
 				}
-				catch (IOException e) {
-					System.out.println("CSVReader creation error.");
+				catch (IOException e) {			
+					e.printStackTrace();	
+					label.setText("CSVReader creation error.");
+					panel.add(label);
+					JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+					return;
 				}
 			}
 		}
@@ -85,7 +107,7 @@ public class csv2pdf {
 					headers[i].equals("Address") || 
 					headers[i].equals("CMHC Number")) {
 					
-					String[] s = new String[MAXIMUM_NUMBER_PDFS];
+					String[] s = new String[data.size() + 1];
 					
 					// Stores header
 					s[0] = headers[i];
@@ -101,37 +123,72 @@ public class csv2pdf {
 			}
 		}
 		
+		// Creates FDF file
 		try {
 			FDFDoc doc = null;
 			doc = new FDFDoc();
-			for (int i = 1; i < finalData.size(); i++) {
+			
+			for (int i = 1; i < finalData.get(0).length ; i++) {
+				// Creates form values and sets them
 				doc.SetValue("Province", getProvince(finalData.get(0)[i]));
-				doc.SetValue("Address", checkForComma(finalData.get(2)[i]) ? parseAddress(finalData.get(2)[i]) : finalData.get(2)[i]);
+				doc.SetValue("Address", checkForComma(finalData.get(2)[i]) ? parseAddress(finalData.get(2)[i]) : parseStreet(finalData.get(2)[i]));
 				doc.SetValue("City", checkForComma(finalData.get(2)[i]) ? finalCity : "");
-				doc.SetValue("Street No", streetNumber);
+				doc.SetValue("Street No", streetNumber != null ? streetNumber : "");
 				doc.SetValue("CMHC Account No", parseCMHC(finalData.get(3)[i]));
-				doc.SetFile(dirNames[1] + getService(finalData.get(1)[i]));
 				
+				if(!checkPDFLocation(directory + getService(finalData.get(1)[i]))) {						
+					label.setText("PDF file not found.  Please reinstall.");
+					panel.add(label);
+					JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+					return;
+				}
+				
+				// Uses a pdf to fill forms
+				doc.SetFile(directory + getService(finalData.get(1)[i]));
+				
+				// Filename of fdf file
 				filename += Integer.toString(i);
 				filename += ".fdf";
 				
-				doc.Save(filename);
+				// Saves fdf file
+				doc.Save(directory + "temp/" + filename);
 				
-				String s = "acrobat /n " + System.getProperty("user.dir") + "/" + filename;
-				
+				// Opens a new instance of each pdf with new acrobat window
+				String s = "acrobat /n " + directory + "temp/" + filename;
 				@SuppressWarnings("unused")
 				Process pr = Runtime.getRuntime().exec(s);
+
+				filename = "temp";
 			}
 		}
-		catch (FDFException e) {
-			System.out.println("FDF error");
+		catch (FDFException e) {		
+			e.printStackTrace();		
+			label.setText("FDF creation error");
+			panel.add(label);
+			JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+			return;
 		}
-		catch (IOException e) {
-			System.out.println("IO error");
+		catch (IOException e) {			
+			e.printStackTrace();	
+			label.setText("IO error");
+			panel.add(label);
+			JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+			return;
 		}
-	}		
-	
-	
+		
+/*		try {
+			@SuppressWarnings("unused")
+			Process pr = Runtime.getRuntime().exec("del *.fdf");
+		}
+		catch (IOException e) {			
+			e.printStackTrace();
+			label.setText("IO error");
+			panel.add(label);
+			JOptionPane.showOptionDialog(null, panel, "Error Message", JOptionPane.NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, buttonText, buttonText[0]);
+			return;
+		}*/
+	}	
+
 	// Function - getNewestFile
 	//
 	// Input - String - directory path
@@ -228,8 +285,10 @@ public class csv2pdf {
 				return pdfNames[0];
 			case "Retrofit Final":
 				return pdfNames[1];
+			case "RRAP Final":
+				return pdfNames[2];
 			default:
-				return pdfNames[0];
+				return pdfNames[1];
 		}
 	}
 	
@@ -240,8 +299,10 @@ public class csv2pdf {
 	//
 	// Finds the directory of the newest file downloaded and returns the file
 	private static File findDirectory() {
+		// Stores all download directories in array
 		File[] files = {getNewestFile(dirNames[0]), getNewestFile(dirNames[1]), getNewestFile(dirNames[2])};
 		
+		// Checks all last modified files against each other to see which one is newest.
 		File newestFile = files[0];
 		for (int i = 1; i < files.length; i++) {
 			if (newestFile.lastModified() < files[i].lastModified()) {
@@ -261,9 +322,8 @@ public class csv2pdf {
 	private static String parseAddress(String address) {
 		final char comma = ',';
 		int count = 0;
-		@SuppressWarnings("unused")
-		String temp;
 		
+		// Counts how many commas
 		for (int i = 0; i < address.length(); i++) {
 			if (address.charAt(i) == comma) {
 				count++;
@@ -271,15 +331,19 @@ public class csv2pdf {
 		}
 		
 		if (count != 0) {
+			// If there is one comma, parse the city and return the street
 			if (count == 1) {
 				finalCity = address.substring(address.lastIndexOf(comma) + 1).replaceAll("\\s+", "");
 				return parseStreet(address.substring(0, address.lastIndexOf(comma)));
 			}
+			// If there is two commas, parse the city, return the street and ignore the province
 			else if (count == 2) {
-				temp = address.substring(address.lastIndexOf(comma));
+				finalCity = address.substring(address.indexOf(comma) + 1, address.lastIndexOf(comma)).replaceAll("\\s+", "");
+				return parseStreet(address.substring(0, address.indexOf(comma)));
 			}
 		}
 		
+		// If there is no comma's return an empty string
 		return "";
 	}
 	
@@ -292,11 +356,13 @@ public class csv2pdf {
 	private static boolean checkForComma(String address) {
 		final char comma = ',';
 		
+		// Checks the string for any occurrences of a comma and returns true
 		for (int i = 0; i < address.length(); i++) {
 			if (address.charAt(i) == comma) {
 				return true;
 			}
 		}
+		// No commas found return false
 		return false;
 	}
 	
@@ -307,21 +373,22 @@ public class csv2pdf {
 	//
 	// Parses street number from address
 	private static String parseStreet(String address) {
-		System.out.println(address.substring(0, address.indexOf(' ')));
-		if (address.substring(0, address.indexOf(' ')) == "House" ||
-		    address.substring(0, address.indexOf(' ')) == "Lot" ||
-		    address.substring(0, address.indexOf(' ')) == "Unit" ||
-		    address.substring(0, address.indexOf(' ')) == "Mile") {
+		// Checks for keywords to parse address from second occurrence of a space
+		if (address.substring(0, address.indexOf(' ')).equals("House") ||
+		    address.substring(0, address.indexOf(' ')).equals("Lot") ||
+		    address.substring(0, address.indexOf(' ')).equals("Unit") ||
+		    address.substring(0, address.indexOf(' ')).equals("Mile")) {
 			streetNumber = address.substring(0, ordinalIndexOf(address, " ", 2));
-			if (streetNumber == null)
-				streetNumber = "";
-			return address.substring(ordinalIndexOf(address, " ", 2) + 1);
+			return (streetNumber != null) ? address.substring(ordinalIndexOf(address, " ", 2) + 1) : "";
 		}
-		else {
+		// Checks to see if the first character is a digit to insure address has a street number infront of it
+		else if (Character.isDigit(address.substring(0, address.indexOf(' ')).charAt(0))) {
 			streetNumber = address.substring(0, address.indexOf(' '));
-			if (streetNumber == null)
-				streetNumber = "";
 			return address.substring(address.indexOf(' ') + 1);
+		}
+		// Otherwise just return the address
+		else {
+			return address;
 		}
 	}
 	
@@ -335,20 +402,59 @@ public class csv2pdf {
 	// Finds the ordinal index of a substring within another string
 	// For example, find the second , in a string --> ordinalIndexOf(someString, ",", 2)
 	private static int ordinalIndexOf(String str, String substr, int n) {
+		// Stores first occurrence of substring
 		int pos = str.indexOf(substr);
+		
+		// Loops until the last occurrence is found or until the end of the string is found
 		while (--n > 0 && pos != -1) 
 			pos = str.indexOf(substr, pos + 1);
 		return pos;
 	}
 	
+	// Function - parseCMHC
+	//
+	// Input - String - CMHC 8 digit number
+	//
+	// Output - String - CMHC 8 digit number without special characters
+	//
+	// Takes a CMHC number and removes spaces and/or dashes for a number only CMHC number
+	// NOTE:  Some CMHC numbers are longer than 8 digits but will only print out 8 digits on the pdf form
 	private static String parseCMHC(String number) {
+		// Checks CMHC number for any occurrence of a dash and replaces with nothing
 		if (number.contains("-")) {
 			number = number.replaceAll("-", "");
 		}
 		
+		// Checks CMHC number for any occurrence of a space and replaces with nothing
 		if (number.contains(" ")) {
 			number = number.replaceAll(" ", "");
 		}
+		
+		// Returns a number only format
 		return number;
+	}		
+	
+	// Function - checkPDFLocation
+	//
+	// Input - String - file directory path
+	//
+	// Output - boolean
+	//
+	// Checks to see if file is in location. Returns true if found, otherwise returns false.
+	
+	private static boolean checkPDFLocation(String location) {	
+		return new File(location).exists() && !(new File(location).isDirectory());
+	}
+	
+	// Function - checkDirectoryLocation
+	//
+	// Input - String - directory path
+	//
+	// Output - boolean
+	//
+	// Checks to see if directory is in location. Returns true if found, otherwise returns false.
+	
+	private static boolean checkDirectoryLocation(String location) {	
+		return new File(location).exists() && new File(location).isDirectory();
 	}
 }
